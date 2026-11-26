@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Дашборд{% endblock %}
+{% block content %}
+<h1>Дашборд <span class="muted">· {{ month }}</span></h1>
+<p class="muted">Сначала отстающие. Процент — доля KPI от максимума: итог для закрытого месяца, прогноз для открытого.</p>
+
+{% if not rows %}<p class="muted">Отделов пока нет.</p>{% endif %}
+<div class="grid">
+{% for row in rows %}{% set c = row.current %}
+<section class="card">
+  <div class="card-head">
+    <h2><a href="/d/{{ row.dept.slug }}">{{ row.dept.name }}</a></h2>
+    <span class="muted">{{ row.dept.kpi_holder }}</span>
+  </div>
+  {% if not c %}
+    <p class="muted">Месяцы ещё не открыты. <a href="/d/{{ row.dept.slug }}">Открыть первый месяц</a></p>
+  {% elif c.error %}
+    <div class="flash error">{{ c.month }}: {{ c.error }}</div>
+  {% else %}
+    <div class="big {{ m.score_class(c.score) }}">{{ c.score|num }}%</div>
+    <div class="muted">{{ 'итог' if c.final else 'прогноз' }} за {{ c.month }} ·
+      KPI {{ (c.calc.bonus if c.final else c.calc.potential_bonus)|num }} из {{ c.calc.max_bonus|num }} {{ c.rules.currency }}</div>
+    <div class="bars">
+      {% for t in row.trend %}{% if 'score' in t %}
+      <div class="bar-col" title="{{ t.month }}: {{ t.score|num }}%{{ '' if t.final else ' (прогноз)' }}">
+        <div class="bar {{ m.score_class(t.score) }}{{ '' if t.final else ' open' }}" style="height: {{ [t.score, 3]|max }}%"></div>
+        <span>{{ t.month[5:] }}</span>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+    <ul class="mini-blocks">
+      {% for b in c.calc.blocks %}
+      <li><span>{{ b.name }}</span><b class="{{ m.score_class(b.coefficient * 100) }}">{{ (b.coefficient * 100)|num }}%</b></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if row.attention %}
+  <ul class="attention">{% for a in row.attention %}<li>{{ a }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endfor %}
+</div>
+{% endblock %}

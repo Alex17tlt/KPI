@@ -1,0 +1,23 @@
+{% import "_macros.html" as m %}
+<form class="task card {{ 'late' if r.status == 'overdue' }}" method="post" action="/w/{{ dept.slug }}/{{ rec.month }}/submit">
+  <input type="hidden" name="task_id" value="{{ r.task.id }}">
+  <input type="hidden" name="revision" value="{{ rec.revision }}">
+  <div class="task-head">
+    <b>{{ r.task.title }}</b>
+    {{ m.status_tag(r.status) }}
+  </div>
+  <div class="muted">Блок {{ r.task.block }} · срок {{ r.task.deadline|msk }}</div>
+  {% if r.task.detail %}<p class="detail">{{ r.task.detail }}</p>{% endif %}
+  {% for c in r.task.checks %}
+  <div class="check">
+    <span>{{ c.label }}</span>
+    <span class="yn">
+      <label><input type="radio" name="check_{{ c.key }}" value="yes" required> Да</label>
+      <label><input type="radio" name="check_{{ c.key }}" value="no"> Нет</label>
+    </span>
+  </div>
+  {% endfor %}
+  <textarea name="comment" rows="2" maxlength="4000" placeholder="Комментарий. Обязателен, если есть «Нет»: чего не хватает, кому задан вопрос, когда ожидается исправление."></textarea>
+  {% if r.status == 'overdue' %}<p class="bad small">Срок прошёл — сдача будет засчитана как нарушение, но её всё равно нужно отметить.</p>{% endif %}
+  {% if not closed %}<div><button class="primary">Сдано</button></div>{% endif %}
+</form>

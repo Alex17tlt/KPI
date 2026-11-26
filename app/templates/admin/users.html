@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<h1>Пользователи {% if pending %}<span class="tag warn">Ожидают подтверждения: {{ pending }}</span>{% endif %}</h1>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Почта</th><th>Имя</th><th>Роль</th><th>Статус</th><th>Отдел</th><th>Последний вход</th><th>Действия</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr class="{{ 'row-pending' if u.status == 'pending' }}">
+    <td>{{ u.email }}{% if u.must_change_password %}<br><span class="muted">временный пароль</span>{% endif %}</td>
+    <td><input form="f{{ u.id }}" name="full_name" value="{{ u.full_name }}" maxlength="200"></td>
+    <td><select form="f{{ u.id }}" name="role">
+      {% for k, v in ROLE_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if u.role == k }}>{{ v }}</option>{% endfor %}
+    </select></td>
+    <td><select form="f{{ u.id }}" name="status">
+      {% for k, v in STATUS_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if u.status == k }}>{{ v }}</option>{% endfor %}
+    </select></td>
+    <td><select form="f{{ u.id }}" name="department_id">
+      <option value="">—</option>
+      {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if u.department_id == d.id }}>{{ d.name }}</option>{% endfor %}
+    </select></td>
+    <td>{{ u.last_login_at|msk }}</td>
+    <td class="actions">
+      <form id="f{{ u.id }}" method="post" action="/admin/users/{{ u.id }}"><button class="primary">Сохранить</button></form>
+      {% if u.id != user.id %}
+      <form method="post" action="/admin/users/{{ u.id }}/reset-password" onsubmit="return confirm('Сбросить пароль и выдать временный?')"><button>Временный пароль</button></form>
+      <form method="post" action="/admin/users/{{ u.id }}/send-reset"><button>Письмо для сброса</button></form>
+      {% if u.status == 'active' %}<form method="post" action="/admin/users/{{ u.id }}/impersonate"><button>Войти как</button></form>{% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<section class="card">
+  <h2>Создать пользователя</h2>
+  <form method="post" action="/admin/users" class="row">
+    <input type="email" name="email" placeholder="Почта" required>
+    <input name="full_name" placeholder="Имя и фамилия">
+    <select name="role">{% for k, v in ROLE_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if k == 'employee' }}>{{ v }}</option>{% endfor %}</select>
+    <select name="department_id"><option value="">Без отдела</option>{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+    <button class="primary">Создать и выдать временный пароль</button>
+  </form>
+</section>
+{% endblock %}

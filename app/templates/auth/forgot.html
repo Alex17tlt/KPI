@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Восстановление пароля{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Восстановление пароля</h1>
+  <form method="post" action="/forgot" class="stack">
+    <label>Рабочая почта<input type="email" name="email" required autofocus></label>
+    <button class="primary">Отправить ссылку</button>
+  </form>
+  <p class="muted"><a href="/login">Вернуться ко входу</a></p>
+</div>
+{% endblock %}

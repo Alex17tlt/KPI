@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Рабочее место{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Рабочее место</h1>
+  <p class="muted">Выберите отдел:</p>
+  <ul>{% for d in depts %}<li><a href="/w/{{ d.slug }}">{{ d.name }}</a>{% if d.kpi_holder %} <span class="muted">· {{ d.kpi_holder }}</span>{% endif %}</li>{% endfor %}</ul>
+</div>
+{% endblock %}

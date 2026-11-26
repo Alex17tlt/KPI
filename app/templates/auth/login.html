@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Вход</h1>
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="next" value="{{ next or '/' }}">
+    <label>Рабочая почта<input type="email" name="email" value="{{ email or '' }}" required autofocus></label>
+    <label>Пароль<input type="password" name="password" required></label>
+    <button class="primary">Войти</button>
+  </form>
+  <p class="muted"><a href="/forgot">Забыли пароль?</a> · <a href="/signup">Регистрация</a></p>
+</div>
+{% endblock %}

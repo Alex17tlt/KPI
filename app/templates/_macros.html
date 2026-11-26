@@ -1,0 +1,44 @@
+{% macro score_class(p) -%}{{ 'good' if p >= SCORE_GOOD else ('warn' if p >= SCORE_WARN else 'bad') }}{%- endmacro %}
+
+{% macro status_tag(s) -%}<span class="tag st-{{ s }}">{{ TASK_STATUS[s] }}</span>{%- endmacro %}
+
+{% macro summary(k, rules) %}
+{% set final = not k.provisional %}
+{% set p = k.score_pct if final else k.potential_score_pct %}
+<div class="stats">
+  <div><b class="{{ score_class(p) }}">{{ p|num }}%</b><span>{{ 'итог' if final else 'прогноз' }} от максимума</span></div>
+  <div><b>{{ (k.bonus if final else k.potential_bonus)|num }} {{ rules.currency }}</b><span>KPI из {{ k.max_bonus|num }}</span></div>
+  <div><b>{{ (k.total if final else k.potential_total)|num }} {{ rules.currency }}</b><span>итого с фиксом {{ rules.fixed|num }}</span></div>
+  <div><b>{{ k.penalties_raw|num }} {{ rules.currency }}</b><span>штрафы{% if k.penalties_applied != k.penalties_raw %}, применено {{ k.penalties_applied|num }}{% endif %}</span></div>
+  <div><b>{{ k.completed_count }}/{{ k.total_tasks }}</b><span>сдано{% if k.overdue_count %}, <span class="bad">просрочено {{ k.overdue_count }}</span>{% endif %}</span></div>
+</div>
+<p>
+  <span class="tag {{ 'good' if final else 'warn' }}">{{ 'Итог подтверждён' if final else 'Предварительно' }}</span>
+  {% if rules.draft %}<span class="tag bad">Черновик правил</span>{% endif %}
+  <span class="muted">{{ rules.title }}</span>
+</p>
+{% endmacro %}
+
+{% macro blocks_table(k) %}
+<table>
+  <thead><tr><th>Блок</th><th>Лимит</th><th>Нарушения</th><th>Коэф.</th><th>Прогноз</th><th>Начислено</th><th>Комментарий</th></tr></thead>
+  <tbody>
+  {% for b in k.blocks %}
+    <tr>
+      <td>{{ b.id }}. {{ b.name }}</td><td>{{ b.max|num }}</td><td>{{ b.violations }}</td>
+      <td><span class="{{ score_class(b.coefficient * 100) }}">{{ (b.coefficient * 100)|num }}%</span></td>
+      <td>{{ b.potential|num }}</td><td>{{ b.earned|num }}</td><td class="muted">{{ b.reason }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro month_picker(action, month, months) %}
+<form method="get" action="{{ action }}" class="inline-form">
+  <select name="month" onchange="this.form.submit()">
+    {% if month not in months %}<option value="{{ month }}" selected>{{ month }}</option>{% endif %}
+    {% for mo in months %}<option value="{{ mo }}" {{ 'selected' if mo == month }}>{{ mo }}</option>{% endfor %}
+  </select>
+</form>
+{% endmacro %}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}KPI{% endblock %} · Seven Group</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% if impersonating and user %}
+<div class="imp">
+  Вы вошли как <b>{{ user.display_name }}</b>.
+  <form method="post" action="/admin/stop-impersonation" class="inline"><button class="link">Вернуться к своей учётной записи</button></form>
+</div>
+{% endif %}
+<header class="top">
+  <div class="container bar">
+    <a class="brand" href="/">Seven Group · KPI</a>
+    {% if user %}
+    <nav>
+      {% if user.is_founder or user.role == 'viewer' %}<a href="/dashboard">Дашборд</a>{% endif %}
+      {% if user.is_founder or user.role == 'employee' %}<a href="/w">Рабочее место</a>{% endif %}
+      {% if user.is_admin %}<a href="/admin/users">Пользователи</a>{% endif %}
+    </nav>
+    <div class="me">
+      <span>{{ user.display_name }} · {{ ROLE_LABELS[user.role] }}</span>
+      <a href="/account/password">Пароль</a>
+      <form method="post" action="/logout" class="inline"><button class="link">Выйти</button></form>
+    </div>
+    {% endif %}
+  </div>
+</header>
+<main class="container">
+  {% for f in flashes %}<div class="flash {{ f.kind }}">{{ f.msg }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

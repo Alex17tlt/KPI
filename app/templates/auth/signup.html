@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Регистрация</h1>
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/signup" class="stack">
+    <label>Имя и фамилия<input name="full_name" value="{{ full_name or '' }}" maxlength="200"></label>
+    <label>Рабочая почта<input type="email" name="email" value="{{ email or '' }}" required></label>
+    <label>Пароль (не короче 10 символов)<input type="password" name="password" required minlength="10"></label>
+    <label>Повторите пароль<input type="password" name="password2" required minlength="10"></label>
+    <button class="primary">Отправить заявку</button>
+  </form>
+  <p class="muted">После регистрации администратор подтвердит доступ. <a href="/login">Уже есть учётная запись</a></p>
+</div>
+{% endblock %}

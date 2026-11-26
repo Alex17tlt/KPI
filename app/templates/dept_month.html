@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ dept.name }} · {{ month }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ dept.name }} {% if dept.kpi_holder %}<span class="muted">· {{ dept.kpi_holder }}</span>{% endif %}</h1>
+  <div class="row">
+    {{ m.month_picker("/d/" ~ dept.slug, month, months) }}
+    {% if user.is_founder %}
+      <a class="btn" href="/d/{{ dept.slug }}/rules?month={{ month }}">Веса и правила</a>
+      <a class="btn" href="/w/{{ dept.slug }}?month={{ month }}">Рабочее место</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not rec %}
+<section class="card">
+  <h2>Месяц {{ month }} не открыт</h2>
+  {% if user.is_founder %}
+  <form method="post" action="/d/{{ dept.slug }}/months" class="row">
+    <label>Месяц<input type="month" name="month" value="{{ month }}" required></label>
+    <label>Начало учёта<input type="date" name="start_date" value="{{ default_start }}" required></label>
+    <button class="primary">Открыть месяц</button>
+  </form>
+  <p class="muted">Месяц получит копию текущего шаблона правил отдела. Последующие изменения шаблона на него не повлияют.</p>
+  {% else %}<p class="muted">Фаундер ещё не открыл этот месяц.</p>{% endif %}
+</section>
+{% else %}
+
+{% if closed %}<div class="flash warn">Месяц закрыт {{ rec.closure_json.at|msk }} ({{ rec.closure_json.by }}): {{ rec.closure_json.note }}</div>{% endif %}
+{% if error %}<div class="flash error">Ошибка расчёта: {{ error }}</div>{% endif %}
+
+{% if calc %}
+<section class="card">
+  {{ m.summary(calc, rules) }}
+  {{ m.blocks_table(calc) }}
+  {% if calc.warnings %}
+  <details><summary>Примечания ({{ calc.warnings|length }})</summary>
+    <ul>{% for w in calc.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card" id="metrics">
+  <h2>Показатели</h2>
+  {% if rules.metrics %}
+  <form method="post" action="/d/{{ dept.slug }}/{{ month }}/metrics" class="stack">
+    <input type="hidden" name="revision" value="{{ rec.revision }}">
+    {% for mt in rules.metrics %}{% set cur = (rec.metrics_json or {}).get(mt.key, {}) %}
+    <div class="row">
+      <label>{{ mt.label }}{% if mt.unit %}, {{ mt.unit }}{% endif %}
+        <input name="metric_{{ mt.key }}" inputmode="decimal" value="{{ cur.get('value')|plain }}" {{ 'disabled' if closed or not user.is_founder }}></label>
+      <label class="grow">{{ mt.evidence_label }}
+        <input name="evidence_{{ mt.key }}" value="{{ cur.get('evidence', '') }}" {{ 'disabled' if closed or not user.is_founder }}></label>
+    </div>
+    {% endfor %}
+    {% if user.is_founder and not closed %}<div><button class="primary">Сохранить показатели</button></div>{% endif %}
+  </form>
+  {% else %}<p class="muted">У отдела нет вводимых вручную показателей.</p>{% endif %}
+</section>
+
+<section class="card" id="issues">
+  <h2>Замечания и штрафы</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th>Разбор</th><th>Штраф</th><th></th></tr></thead>
+    <tbody>
+    {% for it in issues %}{% set i = it.r %}{% set p = it.pen %}
+    <tr class="{{ 'voided' if i.voided }}">
+      <td>{{ i.date }}</td>
+      <td>{{ rules.penalties.kind_labels.get(i.kind, i.kind) }}<br><span class="muted">{{ rules.penalties.severity_labels.get(i.severity, i.severity) }}</span></td>
+      <td><b>{{ i.category }}</b> — {{ i.description }}<br>
+        <span class="muted">Обнаружил: {{ i.found_by }}{% if i.found_by_owner %} (сам сотрудник){% endif %}{% if i.corrected_before_sending %} · исправлено до отправки{% endif %}{% if i.repeat %} · повтор{% endif %}</span>
+        {% if i.voided %}<br><span class="bad">Отменено: {{ i.void_reason }}</span>{% endif %}</td>
+      <td>{% if i.analysis %}<div class="pre">{{ i.analysis }}</div><span class="muted">{{ i.analysis_at|msk }}</span>
+          {% elif p and not p.exempt %}<span class="{{ 'bad' if p.analysis_late else 'warn' }}">Ждём разбор до {{ p.analysis_due|msk }}</span>
+          {% else %}—{% endif %}</td>
+      <td>{% if p %}{{ p.total|num }} {{ rules.currency }}<br><span class="muted">{{ p.reason }}{% if p.analysis_late %}; разбор с опозданием +{{ p.analysis_fee|num }}{% endif %}</span>
+            {% if p.repeat_suggested and not i.repeat %}<br><span class="tag warn">Похоже на повтор</span>{% endif %}
+          {% else %}—{% endif %}</td>
+      <td class="actions">
+        {% if user.is_founder and not closed and not i.voided %}
+        <form method="post" action="/d/{{ dept.slug }}/{{ month }}/repeat">
+          <input type="hidden" name="revision" value="{{ rec.revision }}"><input type="hidden" name="issue_id" value="{{ i.id }}">
+          <input type="hidden" name="value" value="{{ '0' if i.repeat else '1' }}">
+          <button>{{ 'Снять повтор' if i.repeat else 'Отметить повтор' }}</button>
+        </form>
+        <form method="post" action="/d/{{ dept.slug }}/{{ month }}/void" class="row">
+          <input type="hidden" name="revision" value="{{ rec.revision }}"><input type="hidden" name="issue_id" value="{{ i.id }}">
+          <input name="reason" placeholder="Причина отмены" required><button>Отменить</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="muted">Замечаний нет.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if user.is_founder and not closed %}
+  <details><summary>Добавить замечание</summary>
+    <form method="post" action="/d/{{ dept.slug }}/{{ month }}/issue" class="grid-form">
+      <input type="hidden" name="revision" value="{{ rec.revision }}">
+      <label>Дата<input type="date" name="date" value="{{ today_max }}" min="{{ rec.start_date }}" max="{{ today_max }}" required></label>
+      <label>Тип<select name="kind">{% for kk, v in rules.penalties.kind_labels.items() %}<option value="{{ kk }}">{{ v }}</option>{% endfor %}</select></label>
+      <label>Уровень<select name="severity">{% for kk, v in rules.penalties.severity_labels.items() %}<option value="{{ kk }}">{{ v }} — {{ rules.penalties.severity_amounts.get(kk, 0)|num }} {{ rules.currency }}</option>{% endfor %}</select></label>
+      <label>Категория<input name="category" maxlength="120" required list="categories" placeholder="например: спенды"></label>
+      <datalist id="categories">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+      <label class="wide">Описание<textarea name="description" rows="2" maxlength="4000" required></textarea></label>
+      <label>Кто обнаружил<input name="found_by" value="{{ user.display_name }}" maxlength="200" required></label>
+      <label class="checkbox"><input type="checkbox" name="found_by_owner"> Нашёл сам сотрудник ({{ dept.kpi_holder or 'держатель KPI' }}) — без штрафа</label>
+      <label class="checkbox"><input type="checkbox" name="corrected_before_sending"> Исправлено до отправки</label>
+      <label class="checkbox"><input type="checkbox" name="repeat"> Подтверждённый повтор за {{ rules.penalties.repeat_window_months }} мес. (штраф ×{{ rules.penalties.repeat_multiplier|num }})</label>
+      <div><button class="primary">Добавить замечание</button></div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
+{% if calc %}
+<section class="card" id="tasks">
+  <div class="card-head">
+    <h2>Задачи</h2>
+    <div class="filters">
+      {% for s, label in [('', 'Все'), ('violation', 'Нарушения'), ('overdue', 'Просрочено'), ('pending', 'Ожидается'), ('done', 'Сдано')] %}
+      <a href="?month={{ month }}&status={{ s }}#tasks" class="{{ 'active' if status == s }}">{{ label }} ({{ counts.get(s, 0) }})</a>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Срок</th><th>Блок</th><th>Задача</th><th>Статус</th><th>Сдано</th><th>Проверки и комментарий</th></tr></thead>
+    <tbody>
+    {% for r in tasks %}
+    <tr>
+      <td>{{ r.task.deadline|msk }}</td>
+      <td>{{ r.task.block }}</td>
+      <td>{{ r.task.title }}</td>
+      <td>{{ m.status_tag(r.status) }}</td>
+      <td>{% if r.submission %}{{ r.submission.at|msk }}<br><span class="muted">{{ r.submission.by }}</span>{% else %}—{% endif %}</td>
+      <td>{% if r.submission %}
+            {% set ns = namespace(failed=false) %}
+            {% for c in r.task.checks %}{% if r.submission.checks.get(c.key) is not sameas true %}
+              <div class="bad">✗ {{ c.label }}</div>{% set ns.failed = true %}
+            {% endif %}{% endfor %}
+            {% if not ns.failed %}<span class="good">Все проверки пройдены</span>{% endif %}
+            {% if r.submission.comment %}<div class="muted">{{ r.submission.comment }}</div>{% endif %}
+          {% else %}<span class="muted">{{ r.task.detail|truncate(90) }}</span>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="muted">Нет задач с таким статусом.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="card" id="closure">
+  <h2>Закрытие месяца</h2>
+  {% if user.is_founder %}
+    {% if closed %}
+    <form method="post" action="/d/{{ dept.slug }}/{{ month }}/reopen" class="row">
+      <input type="hidden" name="revision" value="{{ rec.revision }}">
+      <input name="reason" class="grow" placeholder="Причина повторного открытия" required>
+      <button>Открыть месяц для правок</button>
+    </form>
+    {% else %}
+      {% if rules.draft %}
+      <form method="post" action="/d/{{ dept.slug }}/{{ month }}/confirm-rules" class="row">
+        <input type="hidden" name="revision" value="{{ rec.revision }}">
+        <input name="reason" class="grow" placeholder="Основание подтверждения правил" required>
+        <button>Подтвердить правила месяца</button>
+      </form>
+      {% endif %}
+      <form method="post" action="/d/{{ dept.slug }}/{{ month }}/close" class="row">
+        <input type="hidden" name="revision" value="{{ rec.revision }}">
+        <input name="note" class="grow" placeholder="Основание закрытия: что проверено" required>
+        <button class="primary">Закрыть месяц</button>
+      </form>
+      <p class="muted">Закрыть можно после окончания месяца по Москве, когда наступили все сроки, заполнены показатели и правила не черновик. Закрытие фиксирует расчёт.</p>
+    {% endif %}
+  {% else %}<p class="muted">{{ 'Месяц закрыт.' if closed else 'Месяц открыт.' }}</p>{% endif %}
+</section>
+
+<details class="card" id="audit">
+  <summary>Журнал действий ({{ audit|length }})</summary>
+  <table>
+    <tbody>
+    {% for a in audit %}
+    <tr>
+      <td>{{ a.at|msk }}</td>
+      <td>{{ a.actor_name }}</td>
+      <td>{{ ACTION_LABELS.get(a.action, a.action) }}{% if a.details.title %}: {{ a.details.title }}{% endif %}</td>
+      <td class="muted">{{ a.reason }}{% if a.details.changes %} {{ a.details.changes|join('; ') }}{% endif %}</td>
+    </tr>
+    {% else %}<tr><td class="muted">Записей нет.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</details>
+
+{% if user.is_founder %}
+<details class="card">
+  <summary>Открыть другой месяц</summary>
+  <form method="post" action="/d/{{ dept.slug }}/months" class="row">
+    <label>Месяц<input type="month" name="month" required></label>
+    <label>Начало учёта<input type="date" name="start_date" required></label>
+    <button>Открыть</button>
+  </form>
+  <p class="muted">Начало учёта должно быть внутри выбранного месяца. Задачи раньше этой даты не оцениваются.</p>
+</details>
+{% endif %}
+
+{% endif %}
+{% endblock %}

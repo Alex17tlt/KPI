@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Веса и правила · {{ dept.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Веса и правила <span class="muted">· {{ dept.name }}</span></h1>
+  <a href="/d/{{ dept.slug }}?month={{ month }}">← к месяцу {{ month }}</a>
+</div>
+
+{% if preview %}
+<section class="card">
+  <h2>Предпросмотр</h2>
+  {% if preview.diff %}
+    <ul>{% for d in preview.diff %}<li>{{ d }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Значения не отличаются от текущих.</p>{% endif %}
+
+  <table>
+    <thead><tr><th>Месяц</th><th>KPI сейчас</th><th>KPI после</th><th>Прогноз сейчас</th><th>Прогноз после</th><th>Разница прогноза</th></tr></thead>
+    <tbody>
+    {% for r in preview.rows %}
+    <tr>
+      <td>{{ r.month }}</td>
+      {% if r.error %}<td colspan="5" class="bad">{{ r.error }}</td>
+      {% else %}{% set delta = r.after.potential_bonus - r.before.potential_bonus %}
+      <td>{{ r.before.bonus|num }}</td><td>{{ r.after.bonus|num }}</td>
+      <td>{{ r.before.potential_bonus|num }}</td><td>{{ r.after.potential_bonus|num }}</td>
+      <td class="{{ 'good' if delta > 0 else ('bad' if delta < 0 else 'muted') }}">{{ '+' if delta > 0 }}{{ delta|num }} {{ preview.currency }}</td>
+      {% endif %}
+    </tr>
+    {% else %}<tr><td colspan="6" class="muted">Нет открытых месяцев для сравнения.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% if preview.blocks %}
+  <h3>По блокам за {{ preview.block_month }}</h3>
+  <table>
+    <thead><tr><th>Блок</th><th>Лимит</th><th>Прогноз сейчас</th><th>Прогноз после</th></tr></thead>
+    <tbody>
+    {% for b in preview.blocks %}
+    <tr><td>{{ b.id }}. {{ b.name }}</td><td>{{ b.max_before|num }} → {{ b.max_after|num }}</td><td>{{ b.before|num }}</td><td>{{ b.after|num }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="muted">Новые значения применены к фактическим данным последних месяцев. Ничего не сохранено.</p>
+</section>
+{% endif %}
+
+{% if template_diff %}
+<div class="flash warn">
+  Шаблон для новых месяцев отличается от правил месяца {{ month }}. Форма показывает правила месяца.
+  <details><summary>Отличия шаблона</summary><ul>{% for d in template_diff %}<li>{{ d }}</li>{% endfor %}</ul></details>
+</div>
+{% endif %}
+{% if rec and not month_editable %}<div class="flash warn">Месяц {{ month }} закрыт — можно изменить только шаблон.</div>{% endif %}
+
+<form method="post" action="/d/{{ dept.slug }}/rules" class="card stack">
+  <input type="hidden" name="month" value="{{ month }}">
+  <input type="hidden" name="revision" value="{{ rec.revision if rec else -1 }}">
+
+  <h2>Деньги</h2>
+  <div class="row">
+    <label>Фикс, {{ base.currency }}<input name="fixed" inputmode="decimal" value="{{ values.get('fixed', base.fixed|plain) }}" required></label>
+    <label>Максимум KPI, {{ base.currency }}<input name="bonus_cap" inputmode="decimal" value="{{ values.get('bonus_cap', base.bonus_cap|plain) }}" required></label>
+  </div>
+
+  <h2>Веса блоков</h2>
+  <p class="muted">Сумма блоков не может превышать максимум KPI. 0 — блок отключён.</p>
+  <table>
+    <tbody>
+    {% for b in base.blocks %}
+    <tr>
+      <td>{{ b.id }}. {{ b.name }}</td>
+      <td><input name="amount_{{ b.id }}" inputmode="decimal" value="{{ values.get('amount_' ~ b.id, b.amount|plain) }}" required></td>
+      <td class="muted">{{ b.description }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Сроки (время по Москве)</h2>
+  <div class="row">
+    {% for k, v in base.times.items() %}
+    <label>{{ rule_label(base, 'time.' ~ k) }}<input type="time" name="time_{{ k }}" value="{{ values.get('time_' ~ k, v) }}" required></label>
+    {% endfor %}
+  </div>
+
+  {% if base.settings %}
+  <h2>Параметры</h2>
+  <div class="row">
+    {% for k, v in base.settings.items() %}
+    <label>{{ rule_label(base, 'setting.' ~ k) }}<input type="number" min="1" max="31" name="setting_{{ k }}" value="{{ values.get('setting_' ~ k, v|plain) }}" placeholder="не задан"></label>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h2>Календарь</h2>
+  <div class="row">
+    <label class="grow">Нерабочие даты (ГГГГ-ММ-ДД, по одной в строке)
+      <textarea name="holidays" rows="4">{{ values.get('holidays', base.holidays|join('\n')) }}</textarea></label>
+    <label class="grow">Дополнительные рабочие даты
+      <textarea name="working_dates" rows="4">{{ values.get('working_dates', base.working_dates|join('\n')) }}</textarea></label>
+  </div>
+
+  <h2>Куда применить</h2>
+  <label class="checkbox"><input type="radio" name="scope" value="both" {{ 'checked' if scope == 'both' }} {{ 'disabled' if not month_editable }}> Месяц {{ month }} и шаблон для новых месяцев</label>
+  <label class="checkbox"><input type="radio" name="scope" value="month" {{ 'checked' if scope == 'month' }} {{ 'disabled' if not month_editable }}> Только месяц {{ month }}</label>
+  <label class="checkbox"><input type="radio" name="scope" value="template" {{ 'checked' if scope == 'template' }}> Только шаблон (с нового месяца)</label>
+
+  <label>Причина изменения (обязательна для сохранения)
+    <textarea name="reason" rows="2" maxlength="2000">{{ values.get('reason', '') }}</textarea></label>
+
+  <div class="row">
+    <button name="do" value="preview">Предпросмотр</button>
+    <button class="primary" name="do" value="save">Сохранить</button>
+  </div>
+</form>
+{% endblock %}

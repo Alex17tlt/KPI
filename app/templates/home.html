@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<h1>KPI по отделам <span class="muted">· {{ month }}</span></h1>
+
+{% if not cards %}
+<p class="muted">{% if user.is_founder %}Отделов пока нет.{% else %}Вам ещё не назначен отдел. Обратитесь к администратору.{% endif %}</p>
+{% endif %}
+
+{% for c in cards %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ c.dept.name }}{% if c.dept.kpi_holder %} <span class="muted">· {{ c.dept.kpi_holder }}</span>{% endif %}</h2>
+    {% if c.record %}<span class="muted">Месяц {{ c.record.month }}{% if c.record.month != month %} (последний сохранённый){% endif %}</span>{% endif %}
+  </div>
+
+  {% if c.error %}
+    <div class="flash error">{{ c.error }}</div>
+  {% elif not c.calc %}
+    <p class="muted">Месяцы ещё не созданы.</p>
+  {% else %}
+    {% set k = c.calc %}{% set cur = c.rules.currency %}
+    {% set p = k.potential_score_pct %}
+    <div class="stats">
+      <div><b class="{{ 'good' if p >= 85 else ('warn' if p >= 60 else 'bad') }}">{{ p|num }}%</b><span>прогноз от максимума</span></div>
+      <div><b>{{ k.potential_bonus|num }} {{ cur }}</b><span>прогноз KPI из {{ k.max_bonus|num }}</span></div>
+      <div><b>{{ k.bonus|num }} {{ cur }}</b><span>начислено</span></div>
+      <div><b>{{ k.penalties_raw|num }} {{ cur }}</b><span>штрафы</span></div>
+      <div><b>{{ k.completed_count }}/{{ k.total_tasks }}</b><span>сдано{% if k.overdue_count %}, просрочено {{ k.overdue_count }}{% endif %}</span></div>
+    </div>
+    <p>
+      <span class="tag {{ 'warn' if k.provisional else 'good' }}">{{ 'Предварительно' if k.provisional else 'Итог подтверждён' }}</span>
+      {% if c.rules.draft %}<span class="tag bad">Черновик правил</span>{% endif %}
+      <span class="muted">Правила: {{ c.rules.title }}</span>
+    </p>
+    <table>
+      <thead><tr><th>Блок</th><th>Лимит</th><th>Нарушения</th><th>Коэф.</th><th>Прогноз</th><th>Начислено</th><th>Комментарий</th></tr></thead>
+      <tbody>
+      {% for b in k.blocks %}
+        <tr>
+          <td>{{ b.id }}. {{ b.name }}</td>
+          <td>{{ b.max|num }}</td>
+          <td>{{ b.violations }}</td>
+          <td>{{ (b.coefficient * 100)|num }}%</td>
+          <td>{{ b.potential|num }}</td>
+          <td>{{ b.earned|num }}</td>
+          <td class="muted">{{ b.reason }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if k.warnings %}
+    <details><summary>Примечания ({{ k.warnings|length }})</summary>
+      <ul>{% for w in k.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+  {% endif %}
+</section>
+{% endfor %}
+
+<p class="muted">Этап 1. Разделы сотрудника (сдача задач) и фаундеров (дашборд, веса, замечания) появятся на этапе 2.</p>
+{% endblock %}

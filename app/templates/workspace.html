@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Рабочее место · {{ dept.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ dept.name }} <span class="muted">· рабочее место</span></h1>
+  <div class="row">
+    {{ m.month_picker("/w/" ~ dept.slug, month, months) }}
+    {% if user.is_founder %}<a class="btn" href="/d/{{ dept.slug }}?month={{ month }}">Обзор фаундера</a>{% endif %}
+  </div>
+</div>
+
+{% if not rec %}
+<div class="card"><p class="muted">Месяц {{ month }} ещё не открыт{% if user.is_founder %}. <a href="/d/{{ dept.slug }}?month={{ month }}">Открыть месяц</a>{% else %} фаундером.{% endif %}</p></div>
+{% else %}
+
+{% if closed %}<div class="flash warn">Месяц закрыт — сдача и правки недоступны.</div>{% endif %}
+{% if error %}<div class="flash error">Ошибка расчёта: {{ error }}</div>{% endif %}
+
+{% if calc %}
+<section class="card">
+  {{ m.summary(calc, rules) }}
+  <details><summary>По блокам</summary>{{ m.blocks_table(calc) }}</details>
+</section>
+
+<h2 class="section">Сейчас <span class="muted">({{ now_tasks|length }})</span></h2>
+<div class="tasks">
+  {% for r in now_tasks %}{% include "_task_card.html" %}{% else %}<p class="muted">На сегодня всё сдано.</p>{% endfor %}
+</div>
+
+<h2 class="section">Ближайшие 7 дней <span class="muted">({{ upcoming|length }})</span></h2>
+<details {{ 'open' if not now_tasks }}><summary>Показать</summary>
+  <div class="tasks">
+    {% for r in upcoming %}{% include "_task_card.html" %}{% else %}<p class="muted">Задач нет.</p>{% endfor %}
+  </div>
+</details>
+
+<h2 class="section" id="issues">Замечания <span class="muted">({{ issues|length }})</span></h2>
+{% for it in issues %}{% set i = it.r %}{% set p = it.pen %}
+<div class="card issue">
+  <div class="task-head">
+    <b>{{ i.category }}</b>
+    <span class="muted">{{ i.date }} · {{ rules.penalties.kind_labels.get(i.kind, i.kind) }} · {{ rules.penalties.severity_labels.get(i.severity, i.severity) }}</span>
+  </div>
+  <p>{{ i.description }}</p>
+  {% if p %}<p class="muted">Штраф: {{ p.total|num }} {{ rules.currency }} — {{ p.reason }}</p>{% endif %}
+  {% if i.analysis %}
+    <div class="pre">{{ i.analysis }}</div><p class="muted">Разбор сдан {{ i.analysis_at|msk }}</p>
+  {% elif p and not p.exempt %}
+    <p class="{{ 'bad' if p.analysis_late else 'warn' }}">Разбор нужен до {{ p.analysis_due|msk }}{% if p.analysis_late %} — срок прошёл (+{{ p.analysis_fee|num }} {{ rules.currency }}){% endif %}</p>
+  {% endif %}
+  {% if not closed %}
+  <form method="post" action="/w/{{ dept.slug }}/{{ rec.month }}/analysis" class="stack">
+    <input type="hidden" name="issue_id" value="{{ i.id }}">
+    <input type="hidden" name="revision" value="{{ rec.revision }}">
+    <textarea name="analysis" rows="3" maxlength="8000" required placeholder="Причина ошибки и что сделано, чтобы она не повторилась"></textarea>
+    <div><button>{{ 'Дополнить разбор' if i.analysis else 'Отправить разбор' }}</button></div>
+  </form>
+  {% endif %}
+</div>
+{% else %}<p class="muted">Замечаний нет.</p>{% endfor %}
+
+<h2 class="section">Сданные задачи <span class="muted">({{ done|length }})</span></h2>
+<details><summary>Показать</summary>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Срок</th><th>Задача</th><th>Статус</th><th>Сдано</th><th>Проверки</th></tr></thead>
+    <tbody>
+    {% for r in done %}
+    <tr>
+      <td>{{ r.task.deadline|msk }}</td>
+      <td>{{ r.task.title }}</td>
+      <td>{{ m.status_tag(r.status) }}</td>
+      <td>{{ r.submission.at|msk }}</td>
+      <td>{% set ns = namespace(failed=false) %}
+        {% for c in r.task.checks %}{% if r.submission.checks.get(c.key) is not sameas true %}
+          <div class="bad">✗ {{ c.label }}</div>{% set ns.failed = true %}
+        {% endif %}{% endfor %}
+        {% if not ns.failed %}<span class="good">Все проверки пройдены</span>{% endif %}
+        {% if r.submission.comment %}<div class="muted">{{ r.submission.comment }}</div>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="muted">Пока ничего не сдано.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</details>
+{% endif %}
+{% endif %}
+{% endblock %}
