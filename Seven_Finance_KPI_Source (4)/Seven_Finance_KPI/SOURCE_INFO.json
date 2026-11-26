@@ -1,0 +1,25 @@
+{
+  "project_title": "Seven Group • KPI Head of Finance",
+  "site_url": "https://seven-finance-kpi-20261116.hummingash.chatgpt.site",
+  "site_project_id": "appgprj_6afaede0c5b88191a34179e87759966f",
+  "published_version": 3,
+  "published_at": "2026-11-18T10:51:42.514763+00:00",
+  "source_commit": "2fdacdb5cdaeae884af4d3b613d976d129a21788",
+  "exported_at": "2026-11-25T12:49:34.414723+00:00",
+  "source_file_count": 123,
+  "source_modified": false,
+  "archive_additions": [
+    "README_RU.md",
+    "SOURCE_INFO.json",
+    "SHA256SUMS.txt"
+  ],
+  "validation": {
+    "existing_kpi_tests": 26,
+    "passed": 26,
+    "failed": 0,
+    "full_dependency_install_and_build_repeated": false
+  },
+  "live_database_included": false,
+  "secrets_included": false,
+  "notes": "Complete tracked source of published Site version 3. Original source bytes are unchanged. Live Cloudflare D1 records and deployment secrets are separate."
+}
