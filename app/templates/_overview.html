@@ -7,9 +7,11 @@
       <div><b class="lead">{{ ov.money.bonus|num }} {{ ov.currency }}</b>
         <span class="muted">KPI из {{ ov.money.max|num }}{% if not ov.final %} · если дальше без нарушений{% endif %}</span></div>
       {{ m.money_bar(ov.money, ov.currency) }}
-      <div class="days">{% for d in ov.days %}<span class="day {{ d.kind }}" title="{{ d.title }}">{{ d.day }}</span>{% endfor %}</div>
+      <div class="days">{% for d in ov.days %}<span class="day {{ d.kind }}" title="{{ d.title }}">{{ d.day }}</span> {% endfor %}</div>
       <div class="legend">
-        <span><i class="day good"></i>всё в срок</span><span><i class="day bad"></i>нарушение</span><span><i class="day future"></i>впереди</span>
+        <span><i class="day good"></i>всё в срок</span>
+        <span><i class="day bad"></i>нарушение</span>
+        <span><i class="day future"></i>впереди</span>
         <span>Сдано {{ ov.done }} из {{ ov.total }}{% if ov.overdue %}, <b class="bad">просрочено {{ ov.overdue }}</b>{% endif %}</span>
       </div>
     </div>

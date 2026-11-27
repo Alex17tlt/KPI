@@ -101,18 +101,20 @@ label.checkbox { flex-direction:row; align-items:center; gap:8px; color:var(--te
 .donut b { font-size:24px; color:var(--text); } .donut span { font-size:12px; color:var(--muted); }
 .split { display:flex; height:14px; border-radius:7px; overflow:hidden; background:var(--line); }
 .seg.good { background:var(--good); } .seg.pen { background:#7f1d1d; } .seg.lost { background:#fca5a5; }
-.legend { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
-.days { display:flex; gap:3px; flex-wrap:wrap; }
-.day { width:22px; height:22px; border-radius:5px; font-size:10px; display:grid; place-items:center; background:#f3f4f6; color:#9ca3af; }
+.legend { font-size:13px; color:var(--muted); display:flex; gap:8px 18px; flex-wrap:wrap; align-items:center; }
+.legend > span { display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; flex:none; }
+.days { display:flex; gap:5px; flex-wrap:wrap; }
+.day { min-width:1.9em; height:1.9em; padding:0 0.25em; box-sizing:border-box; border-radius:5px; font-size:12px; line-height:1; display:grid; place-items:center; flex:0 0 auto; background:#f3f4f6; color:#9ca3af; }
 .day.good { background:#bbf7d0; color:#14532d; } .day.bad { background:#fca5a5; color:#7f1d1d; }
 .day.warn { background:#fde68a; color:#78350f; } .day.future { background:#fff; border:1px dashed #d1d5db; color:var(--muted); }
-.legend i.day { width:10px; height:10px; }
+.legend i.day { width:10px; height:10px; min-width:10px; min-height:10px; padding:0; }
 .blocks-v { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin-top:16px; }
 .bv { display:block; border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--text); }
 .bv:hover { border-color:var(--primary); text-decoration:none; }
 .bv.compact { border:none; border-bottom:1px dashed var(--line); border-radius:0; padding:6px 0; }
-.bv-head { display:flex; justify-content:space-between; gap:8px; font-weight:600; font-size:14px; }
+.bv-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 12px; font-weight:600; font-size:14px; }
+.bv-name { flex:1 1 auto; min-width:min(100%, 11rem); }
 .bv-bar { height:8px; background:var(--line); border-radius:4px; margin:8px 0 6px; overflow:hidden; }
 .bv-bar span { display:block; height:100%; background:currentColor; }
 .bv-bar .idle { color:#9ca3af; }

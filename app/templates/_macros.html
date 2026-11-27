@@ -47,7 +47,7 @@
 
 {% macro block_card(b, href, cur, compact=false) %}
 <a class="bv{{ ' compact' if compact }}" href="{{ href }}">
-  <div class="bv-head"><span>{{ b.name }}</span><span class="pill {{ b.status }}">{{ b.label }}</span></div>
+  <div class="bv-head"><span class="bv-name">{{ b.name }}</span> <span class="pill {{ b.status }}">{{ b.label }}</span></div>
   <div class="bv-bar"><span class="{{ b.status }}" style="width: {{ b.pct }}%"></span></div>
   {% if not compact %}
   <div class="bv-foot">
