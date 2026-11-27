@@ -30,6 +30,9 @@ class Settings:
 
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     LLM_MODEL_TEXT: str = os.getenv("LLM_MODEL_TEXT", "z-ai/glm-5.3")
+    LLM_FALLBACK_MODELS: list[str] = [m.strip() for m in os.getenv(
+        "LLM_FALLBACK_MODELS", "qwen/qwen3.6-plus,qwen/qwen3.7-plus,z-ai/glm-5.2").split(",") if m.strip()]
+    LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "90"))
 
     TIMEZONE: str = "Europe/Moscow"
 

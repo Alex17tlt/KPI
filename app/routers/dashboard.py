@@ -9,35 +9,11 @@ from app.security import current_user
 from app.services.actions import ensure_current_month
 from app.services.departments import list_departments
 from app.services.months import current_month, rules_of, safe_calc
+from app.services.visuals import attention, block_views, is_final, money_split, score
 from app.web import render
 
 router = APIRouter()
 TREND_MONTHS = 6
-
-
-def _attention(recs: list[MonthRecord], current: dict | None, month: str) -> list[str]:
-    out = []
-    unclosed = [r.month for r in recs if r.month < month and not r.closure_json]
-    if unclosed:
-        out.append("Не закрыты месяцы: " + ", ".join(unclosed))
-    if not current or not current.get("calc"):
-        return out
-    k, rules = current["calc"], current["rules"]
-    if rules.draft:
-        out.append("Правила месяца — черновик")
-    if k.overdue_count:
-        out.append(f"Просрочено и не сдано задач: {k.overdue_count}")
-    violations = sum(1 for t in k.task_results if t.status == "violation")
-    if violations:
-        out.append(f"Сдано с нарушением: {violations}")
-    out.extend(k.zeroed_blocks.values())
-    late = sum(1 for p in k.penalty_rows if p.analysis_late)
-    if late:
-        out.append(f"Разбор замечаний просрочен: {late}")
-    if k.missing_metrics and k.period_ended:
-        labels = {m.key: m.label for m in rules.metrics}
-        out.append("Не заполнено для закрытия: " + ", ".join(labels[x] for x in k.missing_metrics))
-    return out
 
 
 @router.get("/dashboard")
@@ -55,11 +31,14 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
             calc, error = safe_calc(db, r)
             item = {"month": r.month, "rec": r, "calc": calc, "error": error}
             if calc:
-                item["rules"] = rules_of(r)
-                item["final"] = not calc.provisional
-                item["score"] = calc.score_pct if item["final"] else calc.potential_score_pct
+                item.update(rules=rules_of(r), final=is_final(calc), score=score(calc))
             trend.append(item)
         current = trend[-1] if trend else None
-        rows.append({"dept": dept, "trend": trend, "current": current, "attention": _attention(recs, current, month)})
+        if current and current.get("calc"):
+            current["blocks"] = block_views(current["rules"], current["calc"])
+            current["money"] = money_split(current["calc"])
+        unclosed = [r.month for r in recs if r.month < month and not r.closure_json]
+        att = attention(current.get("calc") if current else None, current.get("rules") if current else None, unclosed)
+        rows.append({"dept": dept, "trend": trend, "current": current, "attention": att})
     rows.sort(key=lambda r: r["current"]["score"] if r["current"] and "score" in r["current"] else 1000)
     return render(request, "dashboard.html", rows=rows, month=month)

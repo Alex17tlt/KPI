@@ -83,6 +83,8 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if user is None:
         raise LoginRequired()
     request.state.user = user
+    from app.services.notifications import unread_count
+    request.state.unread = unread_count(db, user)
     if user.must_change_password and request.url.path not in ALLOWED_WHILE_FORCED:
         raise PasswordChangeRequired()
     return user

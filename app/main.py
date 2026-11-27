@@ -13,7 +13,7 @@ from app import models  # noqa: F401  (registers tables)
 from app.bootstrap import bootstrap
 from app.config import settings
 from app.db import Base, SessionLocal, engine
-from app.routers import admin, auth, dashboard, departments, pages, workspace
+from app.routers import admin, auth, chat, dashboard, departments, notifications, pages, workspace
 from app.security import Forbidden, LoginRequired, PasswordChangeRequired
 from app.web import render
 
@@ -48,6 +48,8 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(notifications.router)
+app.include_router(chat.router)
 app.include_router(dashboard.router)
 app.include_router(departments.router)
 app.include_router(workspace.router)

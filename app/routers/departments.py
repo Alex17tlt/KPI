@@ -17,6 +17,7 @@ from app.services.actions import (add_issue, build_preview, close_month, confirm
 from app.services.departments import department_rules
 from app.services.months import current_month, find_month, month_list, rules_of, safe_calc
 from app.services.rules_edit import diff_rules, format_errors, parse_edits
+from app.services.visuals import attention, overview
 from app.web import flash, form_dict, form_int, render, run_action
 
 router = APIRouter()
@@ -24,14 +25,14 @@ router = APIRouter()
 
 @router.get("/d/{slug}")
 def department_month(request: Request, slug: str, month: str | None = None, status: str = "",
-                     user: User = Depends(current_user), db: Session = Depends(get_db)):
+                     block: int | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
     ensure(can_view_overview(user))
     dept = get_department(db, slug)
     cur = current_month()
     month = month_param(month, cur)
     rec = ensure_current_month(db, dept, month) if user.is_founder else find_month(db, dept.id, month)
     months = month_list(db, dept.id)
-    ctx = {"dept": dept, "month": month, "rec": rec, "months": months, "status": status}
+    ctx = {"dept": dept, "month": month, "rec": rec, "months": months, "status": status, "block": block}
     tzname = department_rules(dept).timezone
     today = local_date(utcnow(), tzname)
     ctx["default_start"] = today.isoformat() if (month == cur and not months) else f"{month}-01"
@@ -40,15 +41,23 @@ def department_month(request: Request, slug: str, month: str | None = None, stat
 
     rules = rules_of(rec)
     calc, error = safe_calc(db, rec)
-    ctx.update(rules=rules, calc=calc, error=error, closed=bool(rec.closure_json), issues=[], tasks=[], counts={})
+    ctx.update(rules=rules, calc=calc, error=error, closed=bool(rec.closure_json), issues=[], tasks=[],
+               counts={}, overview=None, attention=[], analysis_pending=False)
     if calc:
         pen = {p.issue_id: p for p in calc.penalty_rows}
         ctx["issues"] = [{"r": i, "pen": pen.get(i.id)}
                          for i in sorted(rec.issues, key=lambda x: (x.date, x.created_at), reverse=True)]
-        counts = Counter(t.status for t in calc.task_results)
-        counts[""] = len(calc.task_results)
+        ctx["analysis_pending"] = any(not i.voided and not i.analysis and pen.get(i.id) and not pen[i.id].exempt
+                                      for i in rec.issues)
+        base = [t for t in calc.task_results if block is None or t.task.block == block
+                or any(a.block == block for a in t.task.also_counts)]
+        counts = Counter(t.status for t in base)
+        counts[""] = len(base)
         ctx["counts"] = counts
-        ctx["tasks"] = [t for t in calc.task_results if not status or t.status == status]
+        ctx["tasks"] = [t for t in base if not status or t.status == status]
+        ctx["overview"] = overview(rules, calc, rec.month, rec.start_date, today)
+        earlier = db.scalars(select(MonthRecord).where(MonthRecord.department_id == dept.id, MonthRecord.month < cur))
+        ctx["attention"] = attention(calc, rules, [r.month for r in earlier if not r.closure_json])
     ctx["today_max"] = min(today, last_date(month)).isoformat()
     ctx["categories"] = sorted({c for c in db.scalars(select(IssueRecord.category)
                                                       .where(IssueRecord.department_id == dept.id)) if c})

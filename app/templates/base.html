@@ -18,11 +18,12 @@
     <a class="brand" href="/">Seven Group · KPI</a>
     {% if user %}
     <nav>
-      {% if user.is_founder or user.role == 'viewer' %}<a href="/dashboard">Дашборд</a>{% endif %}
+      {% if user.is_founder or user.role == 'viewer' %}<a href="/dashboard">Дашборд</a><a href="/chat">Ассистент</a>{% endif %}
       {% if user.is_founder or user.role == 'employee' %}<a href="/w">Рабочее место</a>{% endif %}
       {% if user.is_admin %}<a href="/admin/users">Пользователи</a>{% endif %}
     </nav>
     <div class="me">
+      <a href="/notifications">Уведомления{% if unread %} <span class="badge">{{ unread }}</span>{% endif %}</a>
       <span>{{ user.display_name }} · {{ ROLE_LABELS[user.role] }}</span>
       <a href="/account/password">Пароль</a>
       <form method="post" action="/logout" class="inline"><button class="link">Выйти</button></form>

@@ -34,6 +34,31 @@
 </table>
 {% endmacro %}
 
+{% macro money_bar(mo, cur) %}
+<div class="split" title="KPI {{ mo.bonus|num }} · штрафы {{ mo.penalties|num }} · потеряно на блоках {{ mo.lost|num }}">
+  <span class="seg good" style="width: {{ mo.w_bonus }}%"></span><span class="seg pen" style="width: {{ mo.w_pen }}%"></span><span class="seg lost" style="width: {{ mo.w_lost }}%"></span>
+</div>
+<div class="legend">
+  <span><i class="seg good"></i>KPI {{ mo.bonus|num }} {{ cur }}</span>
+  {% if mo.lost %}<span><i class="seg lost"></i>потеряно на блоках {{ mo.lost|num }}</span>{% endif %}
+  {% if mo.penalties %}<span><i class="seg pen"></i>штрафы {{ mo.penalties|num }}</span>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro block_card(b, href, cur, compact=false) %}
+<a class="bv{{ ' compact' if compact }}" href="{{ href }}">
+  <div class="bv-head"><span>{{ b.name }}</span><span class="pill {{ b.status }}">{{ b.label }}</span></div>
+  <div class="bv-bar"><span class="{{ b.status }}" style="width: {{ b.pct }}%"></span></div>
+  {% if not compact %}
+  <div class="bv-foot">
+    <span>{{ b.shown|num }} из {{ b.max|num }} {{ cur }}</span>
+    {% if b.dots %}<span class="dots" title="Нарушений: {{ b.violations }}. Кружков столько, сколько нарушений обнуляют блок">{% for x in b.dots %}<i class="{{ x }}"></i>{% endfor %}{% if b.extra %}<small>+{{ b.extra }}</small>{% endif %}</span>{% endif %}
+  </div>
+  <div class="bv-hint muted">{{ b.hint }}</div>
+  {% endif %}
+</a>
+{% endmacro %}
+
 {% macro month_picker(action, month, months) %}
 <form method="get" action="{{ action }}" class="inline-form">
   <select name="month" onchange="this.form.submit()">

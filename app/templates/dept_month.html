@@ -8,6 +8,7 @@
     {{ m.month_picker("/d/" ~ dept.slug, month, months) }}
     {% if user.is_founder %}
       <a class="btn" href="/d/{{ dept.slug }}/rules?month={{ month }}">Веса и правила</a>
+      <a class="btn" href="/chat?dept={{ dept.slug }}">Ассистент</a>
       <a class="btn" href="/w/{{ dept.slug }}?month={{ month }}">Рабочее место</a>
     {% endif %}
   </div>
@@ -30,20 +31,9 @@
 {% if closed %}<div class="flash warn">Месяц закрыт {{ rec.closure_json.at|msk }} ({{ rec.closure_json.by }}): {{ rec.closure_json.note }}</div>{% endif %}
 {% if error %}<div class="flash error">Ошибка расчёта: {{ error }}</div>{% endif %}
 
-{% if calc %}
-<section class="card">
-  {{ m.summary(calc, rules) }}
-  {{ m.blocks_table(calc) }}
-  {% if calc.warnings %}
-  <details><summary>Примечания ({{ calc.warnings|length }})</summary>
-    <ul>{% for w in calc.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
-  </details>
-  {% endif %}
-</section>
-{% endif %}
+{% if calc %}{% include "_overview.html" %}{% endif %}
 
-<section class="card" id="metrics">
-  <h2>Показатели</h2>
+<details class="card" id="metrics"><summary class="h2">Показатели</summary>
   {% if rules.metrics %}
   <form method="post" action="/d/{{ dept.slug }}/{{ month }}/metrics" class="stack">
     <input type="hidden" name="revision" value="{{ rec.revision }}">
@@ -58,10 +48,9 @@
     {% if user.is_founder and not closed %}<div><button class="primary">Сохранить показатели</button></div>{% endif %}
   </form>
   {% else %}<p class="muted">У отдела нет вводимых вручную показателей.</p>{% endif %}
-</section>
+</details>
 
-<section class="card" id="issues">
-  <h2>Замечания и штрафы</h2>
+<details class="card" id="issues" {{ 'open' if analysis_pending }}><summary class="h2">Замечания и штрафы <span class="muted">({{ issues|length }})</span></summary>
   <div class="scroll">
   <table>
     <thead><tr><th>Дата</th><th>Тип</th><th>Описание</th><th>Разбор</th><th>Штраф</th><th></th></tr></thead>
@@ -116,17 +105,16 @@
     </form>
   </details>
   {% endif %}
-</section>
+</details>
 
 {% if calc %}
-<section class="card" id="tasks">
-  <div class="card-head">
-    <h2>Задачи</h2>
-    <div class="filters">
-      {% for s, label in [('', 'Все'), ('violation', 'Нарушения'), ('overdue', 'Просрочено'), ('pending', 'Ожидается'), ('done', 'Сдано')] %}
-      <a href="?month={{ month }}&status={{ s }}#tasks" class="{{ 'active' if status == s }}">{{ label }} ({{ counts.get(s, 0) }})</a>
-      {% endfor %}
-    </div>
+<details class="card" id="tasks" {{ 'open' if block or status }}>
+  <summary class="h2">Задачи{% if block %} · блок {{ block }}{% endif %} <span class="muted">({{ counts.get('', 0) }})</span></summary>
+  <div class="filters">
+    {% for s, label in [('', 'Все'), ('violation', 'Нарушения'), ('overdue', 'Просрочено'), ('pending', 'Ожидается'), ('done', 'Сдано')] %}
+    <a href="?month={{ month }}&status={{ s }}{% if block %}&block={{ block }}{% endif %}#tasks" class="{{ 'active' if status == s }}">{{ label }} ({{ counts.get(s, 0) }})</a>
+    {% endfor %}
+    {% if block %}<a href="?month={{ month }}&status={{ status }}#tasks">✕ все блоки</a>{% endif %}
   </div>
   <div class="scroll">
   <table>
@@ -134,9 +122,7 @@
     <tbody>
     {% for r in tasks %}
     <tr>
-      <td>{{ r.task.deadline|msk }}</td>
-      <td>{{ r.task.block }}</td>
-      <td>{{ r.task.title }}</td>
+      <td>{{ r.task.deadline|msk }}</td><td>{{ r.task.block }}</td><td>{{ r.task.title }}</td>
       <td>{{ m.status_tag(r.status) }}</td>
       <td>{% if r.submission %}{{ r.submission.at|msk }}<br><span class="muted">{{ r.submission.by }}</span>{% else %}—{% endif %}</td>
       <td>{% if r.submission %}
@@ -152,11 +138,10 @@
     </tbody>
   </table>
   </div>
-</section>
+</details>
 {% endif %}
 
-<section class="card" id="closure">
-  <h2>Закрытие месяца</h2>
+<details class="card" id="closure"><summary class="h2">Закрытие месяца</summary>
   {% if user.is_founder %}
     {% if closed %}
     <form method="post" action="/d/{{ dept.slug }}/{{ month }}/reopen" class="row">
@@ -180,7 +165,7 @@
       <p class="muted">Закрыть можно после окончания месяца по Москве, когда наступили все сроки, заполнены показатели и правила не черновик. Закрытие фиксирует расчёт.</p>
     {% endif %}
   {% else %}<p class="muted">{{ 'Месяц закрыт.' if closed else 'Месяц открыт.' }}</p>{% endif %}
-</section>
+</details>
 
 <details class="card" id="audit">
   <summary>Журнал действий ({{ audit|length }})</summary>

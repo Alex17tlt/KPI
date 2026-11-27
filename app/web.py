@@ -1,7 +1,9 @@
+import re
 from pathlib import Path
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.engine.calendar import parse_ts, tz
 from app.engine.schema import fmt_num
 from app.services.rules_edit import format_errors, rule_label
+from app.services.visuals import GOOD as SCORE_GOOD, WARN as SCORE_WARN
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -22,7 +25,6 @@ ACTION_LABELS = {
     "rules_month": "Правила месяца изменены", "rules_template": "Шаблон правил изменён",
     "rules_confirm": "Правила подтверждены",
 }
-SCORE_GOOD, SCORE_WARN = 85, 60
 
 
 def _msk(value) -> str:
@@ -45,7 +47,15 @@ def _plain(value) -> str:
 templates.env.globals.update(ROLE_LABELS=ROLE_LABELS, STATUS_LABELS=STATUS_LABELS, TASK_STATUS=TASK_STATUS,
                              ACTION_LABELS=ACTION_LABELS, SCORE_GOOD=SCORE_GOOD, SCORE_WARN=SCORE_WARN,
                              rule_label=rule_label)
-templates.env.filters.update(num=fmt_num, msk=_msk, plain=_plain)
+
+
+def _md(text) -> Markup:
+    s = str(escape(text or ""))
+    s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+    return Markup(s)
+
+
+templates.env.filters.update(num=fmt_num, msk=_msk, plain=_plain, md=_md)
 
 
 async def form_dict(request: Request) -> dict[str, str]:
@@ -66,6 +76,7 @@ def flash(request: Request, msg: str, kind: str = "ok") -> None:
 
 def render(request: Request, name: str, *, status_code: int = 200, **ctx):
     ctx.setdefault("user", getattr(request.state, "user", None))
+    ctx["unread"] = getattr(request.state, "unread", 0)
     ctx["flashes"] = request.session.pop("flash", [])
     ctx["impersonating"] = bool(request.session.get("imp_by"))
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)

@@ -1,0 +1,22 @@
+{% import "_macros.html" as m %}
+{% set ov = overview %}
+<section class="card overview">
+  <div class="ov-top">
+    <div class="donut {{ ov.level }}" style="--p: {{ ov.score }}"><div><b>{{ ov.score|num }}%</b><span>{{ 'итог' if ov.final else 'прогноз' }}</span></div></div>
+    <div class="ov-main">
+      <div><b class="lead">{{ ov.money.bonus|num }} {{ ov.currency }}</b>
+        <span class="muted">KPI из {{ ov.money.max|num }}{% if not ov.final %} · если дальше без нарушений{% endif %}</span></div>
+      {{ m.money_bar(ov.money, ov.currency) }}
+      <div class="days">{% for d in ov.days %}<span class="day {{ d.kind }}" title="{{ d.title }}">{{ d.day }}</span>{% endfor %}</div>
+      <div class="legend">
+        <span><i class="day good"></i>всё в срок</span><span><i class="day bad"></i>нарушение</span><span><i class="day future"></i>впереди</span>
+        <span>Сдано {{ ov.done }} из {{ ov.total }}{% if ov.overdue %}, <b class="bad">просрочено {{ ov.overdue }}</b>{% endif %}</span>
+      </div>
+    </div>
+  </div>
+  {% if attention %}<ul class="attention">{% for a in attention %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+  <div class="blocks-v">
+    {% for b in ov.blocks %}{{ m.block_card(b, "?month=" ~ month ~ "&block=" ~ b.id ~ "#tasks", ov.currency) }}{% endfor %}
+  </div>
+  <p class="muted small">Нажмите на блок, чтобы увидеть его задачи · <a href="/chat?dept={{ dept.slug }}">Спросить ассистента</a></p>
+</section>

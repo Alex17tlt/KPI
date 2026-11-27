@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Ассистент{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Ассистент по KPI</h1>
+  <form method="post" action="/chat/new"><input type="hidden" name="dept" value="{{ dept }}"><button>Новый диалог</button></form>
+</div>
+{% if not llm_ready %}<div class="flash error">OPENROUTER_API_KEY не задан — ассистент недоступен.</div>{% endif %}
+<p class="muted">Отвечает по данным системы. Цифры считает движок KPI, ассистент их объясняет.</p>
+
+<div class="card chat">
+  {% for msg in msgs %}
+  <div class="msg {{ msg.role }}{{ ' error' if (msg.meta or {}).get('error') }}">{{ msg.content|md }}</div>
+  {% else %}<p class="muted">Задайте вопрос или выберите подсказку ниже.</p>{% endfor %}
+  <span id="end"></span>
+</div>
+
+<form method="post" action="/chat" class="card stack" onsubmit="busy(this)">
+  <label>Область
+    <select name="dept"><option value="">Все отделы</option>
+      {% for d in depts %}<option value="{{ d.slug }}" {{ 'selected' if d.slug == dept }}>{{ d.name }}</option>{% endfor %}
+    </select></label>
+  <textarea name="question" rows="3" maxlength="2000" required placeholder="Например: почему у финансов просел блок сверок?"></textarea>
+  <div><button class="primary">Спросить</button></div>
+</form>
+<div class="suggest">
+  {% for s in suggestions %}
+  <form method="post" action="/chat" onsubmit="busy(this)">
+    <input type="hidden" name="dept" value="{{ dept }}"><input type="hidden" name="question" value="{{ s }}">
+    <button>{{ s }}</button>
+  </form>
+  {% endfor %}
+</div>
+<script>function busy(f){const b=f.querySelector('button');setTimeout(()=>{b.disabled=true;b.textContent='Думаю… (до минуты)';},0);}</script>
+{% endblock %}

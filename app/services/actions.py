@@ -306,7 +306,8 @@ def save_rule_edits(db: Session, dept: Department, rec: MonthRecord | None, user
         new = apply_edits(old, edits)
         diff = diff_rules(old, new)
         if diff:
-            save_department_rules(db, dept, new, user, reason, source="manual")
+            save_department_rules(db, dept, new, user, reason, source="manual",
+                                  changes=diff, silent=bool(changed))
             changed.append("шаблон для новых месяцев")
     if not changed:
         raise ActionError("Значения не отличаются от текущих — сохранять нечего.")

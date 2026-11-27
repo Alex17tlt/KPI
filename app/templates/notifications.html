@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<h1>Уведомления</h1>
+{% for n in items %}
+<div class="card notif {{ 'unread' if n.id in unread_ids }}">
+  <div class="task-head"><b>{{ n.title }}</b><span class="muted small">{{ n.created_at|msk }}</span></div>
+  {% if n.body %}<div class="pre">{{ n.body }}</div>{% endif %}
+  {% if n.link %}<a href="{{ n.link }}">Открыть</a>{% endif %}
+</div>
+{% else %}<p class="muted">Уведомлений пока нет.</p>{% endfor %}
+{% endblock %}
