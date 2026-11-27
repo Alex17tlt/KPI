@@ -47,6 +47,11 @@ def chat_post(request: Request, question: str = Form(...), dept: str = Form(""),
 
 
 @router.post("/chat/new")
-def chat_new(request: Request, dept: str = Form(""), user: User = Depends(current_user)):
+def chat_new(
+    request: Request,
+    dept: str = Form(""),
+    user: User = Depends(current_user),
+):
+    ensure(can_view_overview(user))
     request.session["chat_thread"] = new_id()
     return RedirectResponse(f"/chat?dept={dept}", status_code=303)

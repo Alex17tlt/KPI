@@ -1,24 +1,102 @@
 {% import "_macros.html" as m %}
 {% set ov = overview %}
-<section class="card overview">
-  <div class="ov-top">
-    <div class="donut {{ ov.level }}" style="--p: {{ ov.score }}"><div><b>{{ ov.score|num }}%</b><span>{{ 'итог' if ov.final else 'прогноз' }}</span></div></div>
-    <div class="ov-main">
-      <div><b class="lead">{{ ov.money.bonus|num }} {{ ov.currency }}</b>
-        <span class="muted">KPI из {{ ov.money.max|num }}{% if not ov.final %} · если дальше без нарушений{% endif %}</span></div>
-      {{ m.money_bar(ov.money, ov.currency) }}
-      <div class="days">{% for d in ov.days %}<span class="day {{ d.kind }}" title="{{ d.title }}">{{ d.day }}</span> {% endfor %}</div>
-      <div class="legend">
-        <span><i class="day good"></i>всё в срок</span>
-        <span><i class="day bad"></i>нарушение</span>
-        <span><i class="day future"></i>впереди</span>
-        <span>Сдано {{ ov.done }} из {{ ov.total }}{% if ov.overdue %}, <b class="bad">просрочено {{ ov.overdue }}</b>{% endif %}</span>
+{% set money = ov.money %}
+
+<section class="card founder-overview" aria-labelledby="founder-overview-title">
+  <h2 id="founder-overview-title">Сводка KPI за {{ month }}</h2>
+
+  <figure class="kpi-breakdown" aria-labelledby="kpi-breakdown-title">
+    {% if money.max > 0 %}
+      {% set bonus_stop = 100 * money.bonus / money.max %}
+      {% set penalty_stop = [100, 100 * (money.bonus + money.penalties) / money.max] | min %}
+      <div class="kpi-donut"
+           style="--bonus-stop: {{ bonus_stop }}%; --penalty-stop: {{ penalty_stop }}%;"
+           aria-hidden="true">
+        <div class="kpi-donut-center">
+          <strong>{{ ov.score | num }}%</strong>
+          <span>{{ 'итог' if ov.final else 'прогноз' }}</span>
+        </div>
       </div>
+    {% endif %}
+
+    <figcaption class="kpi-breakdown-copy">
+      <h3 id="kpi-breakdown-title">Из чего складывается бонус</h3>
+      {% if money.max > 0 %}
+        <p class="kpi-totals">
+          <strong>{{ money.bonus | num }} {{ ov.currency }}</strong>
+          <span class="muted">из {{ money.max | num }} {{ ov.currency }}</span>
+        </p>
+        <p class="muted small">
+          {{ 'Итоговый расчёт' if ov.final else 'Прогноз, если дальше не будет нарушений' }}
+        </p>
+        <dl class="kpi-key">
+          <div>
+            <dt><span class="kpi-swatch kpi-retained" aria-hidden="true"></span>Бонус</dt>
+            <dd>{{ money.bonus | num }} {{ ov.currency }}</dd>
+          </div>
+          <div>
+            <dt><span class="kpi-swatch kpi-penalty" aria-hidden="true"></span>Применённые штрафы</dt>
+            <dd>{{ money.penalties | num }} {{ ov.currency }}</dd>
+          </div>
+          <div>
+            <dt><span class="kpi-swatch kpi-loss" aria-hidden="true"></span>Потери по блокам KPI</dt>
+            <dd>{{ money.lost | num }} {{ ov.currency }}</dd>
+          </div>
+        </dl>
+      {% else %}
+        <p class="muted">Для этого месяца максимальный бонус равен нулю.</p>
+      {% endif %}
+    </figcaption>
+  </figure>
+
+  <section class="deadline-overview" aria-labelledby="deadline-title">
+    <div class="deadline-heading">
+      <h3 id="deadline-title">Сроки задач по дням месяца</h3>
+      <span class="small">
+        Сдано {{ ov.done }} из {{ ov.total }}
+        {% if ov.overdue %} · Просрочено: {{ ov.overdue }}{% endif %}
+      </span>
     </div>
-  </div>
-  {% if attention %}<ul class="attention">{% for a in attention %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+    <p class="muted small">Число — день месяца, на который приходится срок задачи.</p>
+
+    {% set day_labels = {
+      'good': 'Все задачи сданы в срок',
+      'bad': 'Есть нарушение или просрочка',
+      'future': 'Ожидается сдача',
+      'warn': 'Есть незавершённые задачи',
+      'off': 'Нет задач к оценке'
+    } %}
+
+    <ol class="days deadline-days" aria-label="Дни месяца {{ month }}">
+      {% for d in ov.days %}
+        <li class="day {{ d.kind }}" title="{{ d.title }} · {{ day_labels[d.kind] }}">
+          <span aria-hidden="true">{{ d.day }}</span>
+          <span class="kpi-sr-only">{{ d.title }} — {{ day_labels[d.kind] }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+
+    <div class="legend">
+      {% for kind, label in day_labels.items() %}
+        <span><i class="day {{ kind }}" aria-hidden="true"></i>{{ label }}</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if attention %}
+    <ul class="attention">
+      {% for a in attention %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
   <div class="blocks-v">
-    {% for b in ov.blocks %}{{ m.block_card(b, "?month=" ~ month ~ "&block=" ~ b.id ~ "#tasks", ov.currency) }}{% endfor %}
+    {% for b in ov.blocks %}
+      {{ m.block_card(b, "?month=" ~ month ~ "&block=" ~ b.id ~ "#tasks", ov.currency) }}
+    {% endfor %}
   </div>
-  <p class="muted small">Нажмите на блок, чтобы увидеть его задачи · <a href="/chat?dept={{ dept.slug }}">Спросить ассистента</a></p>
+
+  <p class="muted small">
+    Нажмите на блок, чтобы увидеть его задачи ·
+    <a href="/chat?dept={{ dept.slug | urlencode }}">Спросить ассистента</a>
+  </p>
 </section>

@@ -3,17 +3,34 @@
 {% block content %}
 <div class="page-head">
   <h1>Ассистент по KPI</h1>
-  <form method="post" action="/chat/new"><input type="hidden" name="dept" value="{{ dept }}"><button>Новый диалог</button></form>
 </div>
 {% if not llm_ready %}<div class="flash error">OPENROUTER_API_KEY не задан — ассистент недоступен.</div>{% endif %}
 <p class="muted">Отвечает по данным системы. Цифры считает движок KPI, ассистент их объясняет.</p>
 
-<div class="card chat">
+{% if msgs %}
+<form method="post" action="/chat/new" class="chat-reset">
+  <input type="hidden" name="dept" value="{{ dept }}">
+  <button type="submit" aria-describedby="chat-reset-note">
+    Очистить и начать заново
+  </button>
+  <small id="chat-reset-note" class="muted">
+    Предыдущие сообщения не попадут в новый диалог.
+  </small>
+</form>
+{% endif %}
+
+<section class="card chat-transcript" aria-label="История диалога">
   {% for msg in msgs %}
-  <div class="msg {{ msg.role }}{{ ' error' if (msg.meta or {}).get('error') }}">{{ msg.content|md }}</div>
-  {% else %}<p class="muted">Задайте вопрос или выберите подсказку ниже.</p>{% endfor %}
+    {% if msg.role == "user" %}
+      <h2 class="chat-question">{{ msg.content }}</h2>
+    {% else %}
+      <div class="chat-answer{% if (msg.meta or {}).get('error') %} chat-answer-error{% endif %}">{{ msg.content | md }}</div>
+    {% endif %}
+  {% else %}
+    <p class="muted chat-empty">Задайте вопрос или выберите подсказку ниже.</p>
+  {% endfor %}
   <span id="end"></span>
-</div>
+</section>
 
 <form method="post" action="/chat" class="card stack" onsubmit="busy(this)">
   <label>Область
