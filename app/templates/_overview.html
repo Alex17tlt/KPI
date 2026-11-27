@@ -2,21 +2,70 @@
 {% set ov = overview %}
 {% set money = ov.money %}
 
+{% set health = ov.level if money.max > 0 else 'neutral' %}
+{% set health_labels = {
+  'good': 'В норме',
+  'warn': 'Требует внимания',
+  'bad': 'Критический уровень',
+  'neutral': 'Без оценки'
+} %}
 <section class="card founder-overview" aria-labelledby="founder-overview-title">
-  <h2 id="founder-overview-title">Сводка KPI за {{ month }}</h2>
+  <header class="kpi-heading">
+    <div>
+      <p class="kpi-eyebrow">Обзор отдела</p>
+      <h2 id="founder-overview-title">Сводка KPI за {{ month }}</h2>
+    </div>
+    <span class="kpi-health {{ health }}">{{ health_labels[health] }}</span>
+  </header>
+
+  <div class="kpi-tiles">
+    <div class="kpi-tile">
+      <span>Задач сдано</span>
+      <strong>{{ ov.done }} <small>из {{ ov.total }}</small></strong>
+    </div>
+    {% if ov.overdue %}
+      <a class="kpi-tile kpi-tile-alert" href="?month={{ month }}&amp;status=overdue#tasks">
+        <span>Просрочено и не сдано</span>
+        <strong>{{ ov.overdue }} <small>· к задачам →</small></strong>
+      </a>
+    {% else %}
+      <div class="kpi-tile">
+        <span>Просрочено и не сдано</span>
+        <strong>0</strong>
+      </div>
+    {% endif %}
+    <div class="kpi-tile">
+      <span>Ожидается сдача</span>
+      <strong>{{ ov.total - ov.done - ov.overdue }}</strong>
+    </div>
+  </div>
 
   <figure class="kpi-breakdown" aria-labelledby="kpi-breakdown-title">
     {% if money.max > 0 %}
-      {% set bonus_stop = 100 * money.bonus / money.max %}
-      {% set penalty_stop = [100, 100 * (money.bonus + money.penalties) / money.max] | min %}
-      <div class="kpi-donut"
-           style="--bonus-stop: {{ bonus_stop }}%; --penalty-stop: {{ penalty_stop }}%;"
-           aria-hidden="true">
-        <div class="kpi-donut-center">
-          <strong>{{ ov.score | num }}%</strong>
-          <span>{{ 'итог' if ov.final else 'прогноз' }}</span>
-        </div>
-      </div>
+      {% set bonus_share = [100, 100 * money.bonus / money.max] | min %}
+      {% set penalty_share = [100 - bonus_share, 100 * money.penalties / money.max] | min %}
+      <svg class="kpi-ring" width="168" height="168" viewBox="0 0 120 120"
+           role="img" aria-labelledby="kpi-ring-title">
+        <title id="kpi-ring-title">
+          {{ 'Итог KPI' if ov.final else 'Прогноз KPI' }}: {{ ov.score | num }}%
+        </title>
+        <g fill="none" stroke-width="13" transform="rotate(-90 60 60)">
+          <circle cx="60" cy="60" r="48" stroke="#fda4af"/>
+          {% if bonus_share > 0 %}
+            <circle cx="60" cy="60" r="48" pathLength="100" stroke="#15803d"
+                    stroke-dasharray="{{ bonus_share }} {{ 100 - bonus_share }}"/>
+          {% endif %}
+          {% if penalty_share > 0 %}
+            <circle cx="60" cy="60" r="48" pathLength="100" stroke="#9f1239"
+                    stroke-dasharray="{{ penalty_share }} {{ 100 - penalty_share }}"
+                    stroke-dashoffset="{{ -bonus_share }}"/>
+          {% endif %}
+        </g>
+        <text x="60" y="59" text-anchor="middle" font-size="21" font-weight="700"
+              fill="#17233c">{{ ov.score | num }}%</text>
+        <text x="60" y="75" text-anchor="middle" font-size="10"
+              fill="#52617a">{{ 'итог' if ov.final else 'прогноз' }}</text>
+      </svg>
     {% endif %}
 
     <figcaption class="kpi-breakdown-copy">
@@ -52,10 +101,6 @@
   <section class="deadline-overview" aria-labelledby="deadline-title">
     <div class="deadline-heading">
       <h3 id="deadline-title">Сроки задач по дням месяца</h3>
-      <span class="small">
-        Сдано {{ ov.done }} из {{ ov.total }}
-        {% if ov.overdue %} · Просрочено: {{ ov.overdue }}{% endif %}
-      </span>
     </div>
     <p class="muted small">Число — день месяца, на который приходится срок задачи.</p>
 
